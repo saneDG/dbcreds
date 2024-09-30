@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+
+# Colors
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+# Read the token from the script input
+read token
+
+# Extract the cluster address from the token
+cluster_address=$(echo "$token" | awk -F':' '{print $1}')
+
+# Check if the token or cluster address is empty
+if [ -z "$token" ] || [ -z "$cluster_address" ]; then
+  echo -e "${RED}Failed to retrieve the token or cluster address. Exiting.${NC}"
+  exit 1
+fi
+
+# Escape special characters in the cluster address
+escaped_cluster_address=$(printf '%s\n' "$cluster_address" | sed -e 's/[\/&]/\\&/g')
+
+# Print the path of the konfiguraatio.edn file
+config_file="$HOME/Developer/velho-app/konfiguraatio.edn"
+echo -e "Updating server name in file: ${GREEN}$config_file${NC}"
+
+# Update the server name in the file using perl and write the changes back to the file
+perl -0777 -pe 's/(:projektirekisteri-db\s*{[^}]*:server-name\s*")[^"]*(")/\1'"$escaped_cluster_address"'\2/' "$config_file" > "$config_file.tmp"
+
+# Check if the temporary file was created and move it to the original file
+if [ -f "$config_file.tmp" ]; then
+  mv "$config_file.tmp" "$config_file"
+  echo -e "${GREEN}Server name updated successfully.${NC}"
+else
+  echo -e "${RED}Failed to create temporary file.${NC}"
+  exit 1
+fi
+
+# Extract the new password from the token (assuming it's the entire token)
+new_password="$token"
+
+# Escape special characters in the new password
+escaped_password=$(printf '%s\n' "$new_password" | sed -e 's/[\/&]/\\&/g')
+
+# Print the path of the konfiguraatio.edn file
+echo -e "Updating password in file: ${GREEN}$config_file${NC}"
+
+# Update the password in the file using perl and write the changes back to the file
+perl -0777 -pe 's/(:projektirekisteri-db\s*{[^}]*:password\s*")[^"]*(")/\1'"$escaped_password"'\2/' "$config_file" > "$config_file.tmp"
+
+# Check if the temporary file was created and move it to the original file
+if [ -f "$config_file.tmp" ]; then
+  mv "$config_file.tmp" "$config_file"
+  echo -e "${GREEN}Password updated successfully.${NC}"
+else
+  echo -e "${RED}Failed to create temporary file.${NC}"
+fi
